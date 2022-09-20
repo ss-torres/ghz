@@ -98,6 +98,30 @@ var (
 	loadEnd      = kingpin.Flag("load-end", "Specifies the load end value for step or line load schedules.").
 			Default("0").IsSetByUser(&isLoadEndSet).Uint()
 
+	isLoadMinSet = false
+	loadMin      = kingpin.Flag("load-min", "Specifies the minimum load for curve schedules").
+			Default("10").IsSetByUser(&isLoadMinSet).Uint()
+
+	isLoadMaxSet = false
+	loadMax      = kingpin.Flag("load-max", "Specifies the maximum load for curve schedules").
+			Default("200").IsSetByUser(&isLoadMaxSet).Uint()
+
+	isLoadStepMinSet = false
+	loadStepMin      = kingpin.Flag("load-step-min", "Specifies the minimum load step for curve schedules").
+				Default("1").IsSetByUser(&isLoadStepMinSet).Uint()
+
+	isLoadStepMaxSet = false
+	loadStepMax      = kingpin.Flag("load-step-max", "Specifies the maximum load step for curve schedules").
+				Default("3").IsSetByUser(&isLoadStepMaxSet).Uint()
+
+	isChanceSet = false
+	chance      = kingpin.Flag("chance", "Specifies the chance for keep the step trend.").
+			Default("90").IsSetByUser(&isChanceSet).Uint()
+
+	isChangeSecondsSet = false
+	changeSeconds      = kingpin.Flag("change-seconds", "Specifies the change seconds for the step trend").
+				Default("5").IsSetByUser(&isChangeSecondsSet).Uint()
+
 	isLoadStepDurSet = false
 	loadStepDuration = kingpin.Flag("load-step-duration", "Specifies the load step duration value for step load schedule.").
 				Default("0").IsSetByUser(&isLoadStepDurSet).Duration()
@@ -494,6 +518,12 @@ func createConfigFromArgs(cfg *runner.Config) error {
 	cfg.LoadStart = *loadStart
 	cfg.LoadStep = *loadStep
 	cfg.LoadEnd = *loadEnd
+	cfg.LoadMin = *loadMin
+	cfg.LoadMax = *loadMax
+	cfg.LoadStepMin = *loadStepMin
+	cfg.LoadStepMax = *loadStepMax
+	cfg.Chance = *chance
+	cfg.ChangeSeconds = *changeSeconds
 	cfg.LoadStepDuration = runner.Duration(*loadStepDuration)
 	cfg.LoadMaxDuration = runner.Duration(*loadMaxDuration)
 	cfg.Async = *async
@@ -710,6 +740,30 @@ func mergeConfig(dest *runner.Config, src *runner.Config) error {
 
 	if isLoadEndSet {
 		dest.LoadEnd = src.LoadEnd
+	}
+
+	if isLoadMinSet {
+		dest.LoadMin = src.LoadMin
+	}
+
+	if isLoadMaxSet {
+		dest.LoadMax = src.LoadMax
+	}
+
+	if isLoadStepMinSet {
+		dest.LoadStepMin = src.LoadStepMin
+	}
+
+	if isLoadStepMaxSet {
+		dest.LoadStepMax = src.LoadStepMax
+	}
+
+	if isChanceSet {
+		dest.Chance = src.Chance
+	}
+
+	if isChangeSecondsSet {
+		dest.ChangeSeconds = src.ChangeSeconds
 	}
 
 	if isLoadStepDurSet {

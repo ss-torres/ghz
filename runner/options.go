@@ -38,6 +38,9 @@ const ScheduleStep = "step"
 // ScheduleLine is the line load schedule
 const ScheduleLine = "line"
 
+// ScheduleCurve is the curve load schedule
+const ScheduleCurve = "curve"
+
 // RunConfig represents the request Configs
 type RunConfig struct {
 	// call settings
@@ -65,6 +68,12 @@ type RunConfig struct {
 	loadStart        uint
 	loadEnd          uint
 	loadStep         int
+	loadStepMin      uint
+	loadStepMax      uint
+	loadMin          uint
+	loadMax          uint
+	chance           uint
+	changeSeconds    uint
 	loadSchedule     string
 	loadDuration     time.Duration
 	loadStepDuration time.Duration
@@ -195,7 +204,8 @@ func NewConfig(call, host string, options ...Option) (*RunConfig, error) {
 
 	if c.loadSchedule != ScheduleConst &&
 		c.loadSchedule != ScheduleStep &&
-		c.loadSchedule != ScheduleLine {
+		c.loadSchedule != ScheduleLine &&
+		c.loadSchedule != ScheduleCurve {
 		return nil, fmt.Errorf(`schedule much be "%s", "%s", or "%s"`,
 			ScheduleConst, ScheduleStep, ScheduleLine)
 	}
@@ -213,6 +223,20 @@ func NewConfig(call, host string, options ...Option) (*RunConfig, error) {
 
 		if c.loadSchedule == ScheduleStep && c.loadStepDuration == 0 {
 			return nil, errors.New("invalid load step duration")
+		}
+	}
+
+	if c.loadSchedule == ScheduleCurve {
+		if c.loadMin >= c.loadMax {
+			return nil, errors.New("load max should be great than load min")
+		}
+
+		if c.loadStepMin > c.loadStepMax {
+			return nil, errors.New("load step max should not be less than load step min")
+		}
+
+		if c.chance < 1 || c.chance > 100 {
+			return nil, errors.New("chance would be in 1 and 100")
 		}
 	}
 
@@ -408,6 +432,22 @@ func WithConcurrency(c uint) Option {
 func WithRPS(v uint) Option {
 	return func(o *RunConfig) error {
 		o.rps = int(v)
+
+		return nil
+	}
+}
+
+func WithChance(c uint) Option {
+	return func(o *RunConfig) error {
+		o.chance = c
+
+		return nil
+	}
+}
+
+func WithChangeSeconds(s uint) Option {
+	return func(o *RunConfig) error {
+		o.changeSeconds = s
 
 		return nil
 	}
@@ -866,6 +906,38 @@ func WithLoadStep(step int) Option {
 	}
 }
 
+func WithLoadMin(loadMin uint) Option {
+	return func(o *RunConfig) error {
+		o.loadMin = loadMin
+
+		return nil
+	}
+}
+
+func WithLoadMax(loadMax uint) Option {
+	return func(o *RunConfig) error {
+		o.loadMax = loadMax
+
+		return nil
+	}
+}
+
+func WithLoadStepMin(loadStepMin uint) Option {
+	return func(o *RunConfig) error {
+		o.loadStepMin = loadStepMin
+
+		return nil
+	}
+}
+
+func WithLoadStepMax(loadStepMax uint) Option {
+	return func(o *RunConfig) error {
+		o.loadStepMax = loadStepMax
+
+		return nil
+	}
+}
+
 // WithLoadStepDuration specifies the load step duration for step schedule
 func WithLoadStepDuration(duration time.Duration) Option {
 	return func(o *RunConfig) error {
@@ -1139,6 +1211,12 @@ func fromConfig(cfg *Config) []Option {
 		WithLoadStep(cfg.LoadStep),
 		WithLoadStepDuration(time.Duration(cfg.LoadStepDuration)),
 		WithLoadEnd(cfg.LoadEnd),
+		WithLoadMin(cfg.LoadMin),
+		WithLoadMax(cfg.LoadMax),
+		WithLoadStepMin(cfg.LoadStepMin),
+		WithLoadStepMax(cfg.LoadStepMax),
+		WithChance(cfg.Chance),
+		WithChangeSeconds(cfg.ChangeSeconds),
 		WithLoadDuration(time.Duration(cfg.LoadMaxDuration)),
 		WithClientLoadBalancing(cfg.LBStrategy),
 		WithAsync(cfg.Async),

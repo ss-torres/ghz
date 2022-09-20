@@ -111,6 +111,12 @@ type Config struct {
 	LoadStart             uint              `json:"load-start" toml:"load-start" yaml:"load-start"`
 	LoadEnd               uint              `json:"load-end" toml:"load-end" yaml:"load-end"`
 	LoadStep              int               `json:"load-step" toml:"load-step" yaml:"load-step"`
+	LoadMin               uint              `json:"load-min" toml:"load-min" yaml:"load-min"`
+	LoadMax               uint              `json:"load-max" toml:"load-max" yaml:"load-max"`
+	LoadStepMin           uint              `json:"load-step-min" toml:"load-step-min" yaml:"load-step-min"`
+	LoadStepMax           uint              `json:"load-step-max" toml:"load-step-max" yaml:"load-step-max"`
+	Chance                uint              `json:"chance" toml:"chance" yaml:"chance"`
+	ChangeSeconds         uint              `json:"change-seconds" toml:"change-seconds" yaml:"change-seconds"`
 	LoadStepDuration      Duration          `json:"load-step-duration" toml:"load-step-duration" yaml:"load-step-duration"`
 	LoadMaxDuration       Duration          `json:"load-max-duration" toml:"load-max-duration" yaml:"load-max-duration"`
 	LBStrategy            string            `json:"lb-strategy" toml:"lb-strategy" yaml:"lb-strategy"`

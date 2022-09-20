@@ -3,6 +3,7 @@ package load
 import (
 	"fmt"
 	"math"
+	"math/rand"
 	"sync"
 	"time"
 )
@@ -316,4 +317,99 @@ func (p *LinearPacer) Rate(elapsed time.Duration) float64 {
 //   LinearPacer{Slope: 1} => Linear{1 hits / 1s}
 func (p *LinearPacer) String() string {
 	return fmt.Sprintf("Linear{%d hits / 1s}", p.Slope)
+}
+
+// A CurvePacer defines a varied rate of hits
+type CurvePacer struct {
+	Chance        int32         // Potential to increase or decrease in next time [1 - 100]
+	FreqStepMin   uint32        // Min change step of frequency of hits per second
+	FreqStepMax   uint32        // Max change step of frequency of hits per second
+	FreqMin       uint32        // The minimum frequency of hits per second
+	FreqMax       uint32        // The maximum frequency of hits per second
+	ChangeSeconds time.Duration // After what seconds to change the frequency
+	Max           uint64        // Optional maximum allowed hits
+
+	FreqUp   bool          // whether the next step increases or decreases
+	FreqCurr uint32        // Current frequency of hits per second
+	LastDur  time.Duration // last duration when using the new qps
+	LastHits uint64        // how many hits there are when enter the new duration
+}
+
+// String returns a pretty-printed description of the CurvePacer's behaviour:
+func (cp *CurvePacer) String() string {
+	return fmt.Sprintf("Curve{Chance: %d, FreqStepMin: %d, FreqStepMax: %d, FreqMin: %d, FreqMax: %d, ChangeSeconds: %v, Max: %d, FreqUp: %v, FreqCurr: %d, LastDur: %v, LastHits: %v}",
+		cp.Chance, cp.FreqStepMin, cp.FreqStepMax, cp.FreqMin, cp.FreqMax, cp.ChangeSeconds, cp.Max, cp.FreqUp, cp.FreqCurr, cp.LastDur, cp.LastHits)
+}
+
+// Pace determines the length of time to sleep until the next hit is sent
+func (cp *CurvePacer) Pace(elapsed time.Duration, hits uint64) (time.Duration, bool) {
+	if cp.Max > 0 && hits >= cp.Max {
+		return 0, true
+	}
+
+	if cp.FreqCurr == 0 {
+		cp.EnterNewStage(hits)
+		return cp.LastDur - elapsed, false
+	}
+
+	expectedHits := uint64(cp.FreqCurr) * uint64((elapsed-cp.LastDur)/nano)
+	if hits < expectedHits {
+		// Running behind, send next hit immediately.
+		return 0, false
+	}
+
+	interval := uint64(nano / int64(cp.FreqCurr))
+	if math.MaxInt64/interval < (hits - cp.LastHits) {
+		// We would overflow data if we continued, so stop the attack.
+		return 0, true
+	}
+
+	delta := time.Duration((hits + 1 - cp.LastHits) * interval)
+	if delta < cp.ChangeSeconds {
+		return delta - (elapsed - cp.LastDur), false
+	}
+
+	cp.EnterNewStage(hits)
+	return cp.LastDur - elapsed, false
+}
+
+func (cp *CurvePacer) EnterNewStage(hits uint64) {
+	fmt.Println("Pace: ", cp)
+
+	// enter the next stage
+	upRand := rand.Int31n(100)
+	if upRand >= cp.Chance {
+		cp.FreqUp = !cp.FreqUp
+	}
+
+	freqRand := uint32(rand.Int31n(int32(cp.FreqStepMax - cp.FreqStepMin + 1)))
+	freqRand += cp.FreqStepMin
+
+	if cp.FreqUp {
+		cp.FreqCurr += freqRand
+	} else {
+		if cp.FreqCurr >= freqRand {
+			cp.FreqCurr -= freqRand
+		} else {
+			cp.FreqCurr = 0
+		}
+	}
+
+	if cp.FreqCurr >= cp.FreqMax {
+		cp.FreqCurr = cp.FreqMax
+		cp.FreqUp = false
+	} else if cp.FreqCurr <= cp.FreqMin {
+		cp.FreqCurr = cp.FreqMin
+		cp.FreqUp = true
+	}
+
+	fmt.Println("Current Frequency: ", cp.FreqCurr)
+
+	cp.LastDur += cp.ChangeSeconds
+	cp.LastHits = hits
+}
+
+// Rate Returns a CurvePacer's hit rate, for CurvePacer, it could only return current Rate (i.e. requests for second)
+func (cp *CurvePacer) Rate(elapsed time.Duration) float64 {
+	return float64(cp.FreqCurr)
 }

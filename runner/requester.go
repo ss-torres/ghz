@@ -541,6 +541,13 @@ func createWorkerTicker(config *RunConfig) load.WorkerTicker {
 	return wt
 }
 
+func MinNumber(left, right uint) uint {
+	if left >= right {
+		return right
+	}
+	return left
+}
+
 func createPacer(config *RunConfig) load.Pacer {
 	if config.pacer != nil {
 		return config.pacer
@@ -565,6 +572,25 @@ func createPacer(config *RunConfig) load.Pacer {
 			StepDuration: config.loadStepDuration,
 			Max:          uint64(config.n),
 		}
+	case ScheduleCurve:
+		const nano = 1e9
+		config.loadEnd = MinNumber(config.loadEnd, 2*config.loadStart)
+		cp := &load.CurvePacer{
+			Chance:        int32(config.chance),
+			FreqStepMin:   uint32(config.loadStepMin),
+			FreqStepMax:   uint32(config.loadStepMax),
+			FreqMin:       uint32(config.loadMin),
+			FreqMax:       uint32(config.loadMax),
+			ChangeSeconds: time.Duration(config.changeSeconds * nano),
+			Max:           uint64(config.n),
+
+			FreqCurr: uint32(config.loadStart),
+			FreqUp:   true,
+			LastDur:  0,
+			LastHits: 0,
+		}
+		fmt.Println("ScheduleCurve: ", cp)
+		p = cp
 	default:
 		p = &load.ConstantPacer{Freq: uint64(config.rps), Max: uint64(config.n)}
 	}
